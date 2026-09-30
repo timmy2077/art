@@ -18,7 +18,7 @@ public class HideAndInstantiate : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[HideAndInstantiate] 未找到 CanvasGroup，无法隐藏选关界面。", this);
+                uiToHide.SetActive(false);
             }
         }
 

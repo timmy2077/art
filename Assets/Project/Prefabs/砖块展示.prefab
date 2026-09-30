@@ -219,6 +219,7 @@ GameObject:
   - component: {fileID: 5173104386717883789}
   - component: {fileID: 2512348756250547876}
   - component: {fileID: 1410800299077887343}
+  - component: {fileID: 8944190964965756701}
   - component: {fileID: 7239265621497196102}
   m_Layer: 5
   m_Name: UnLocked
@@ -285,6 +286,21 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &8944190964965756701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6974349555646545842}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 065ea3f73b82a2c4ea5d8d7c01150aea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  targetUI: {fileID: 0}
+  targetSceneName: Level1
+  videoPlayer: {fileID: 0}
 --- !u!114 &7239265621497196102
 MonoBehaviour:
   m_ObjectHideFlags: 0

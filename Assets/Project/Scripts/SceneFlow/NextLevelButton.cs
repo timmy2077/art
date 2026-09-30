@@ -5,6 +5,8 @@ public class NextLevelButton : MonoBehaviour
 {
     [Tooltip("要解锁的下一关ID。")]
     [SerializeField] private int nextLevelId = 2;
+    [Tooltip("完成当前关卡后获得的石砖 ID，可填写多个。")]
+    [SerializeField] private string[] rewardBrickIds;
 
     private bool hasTriggered;
 
@@ -15,6 +17,11 @@ public class NextLevelButton : MonoBehaviour
         if (DataSystem.instance != null)
         {
             DataSystem.instance.UnlockLevel(nextLevelId);
+            if (rewardBrickIds != null)
+            {
+                foreach (string brickId in rewardBrickIds)
+                    DataSystem.instance.UnlockBrick(brickId);
+            }
         }
         else
         {
@@ -42,8 +49,8 @@ public class NextLevelButton : MonoBehaviour
         }
         else
         {
-            Debug.LogError("[NextLevelButton] 砖块Canvas缺少 CanvasGroup。", this);
-            return;
+            for (Transform parent = pageSwitch.transform; parent != null; parent = parent.parent)
+                parent.gameObject.SetActive(true);
         }
 
         pageSwitch.SwitchToPage(nextPanelIndex);

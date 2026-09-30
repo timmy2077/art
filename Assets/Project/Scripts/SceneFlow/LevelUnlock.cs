@@ -4,6 +4,8 @@ public class LevelUnlock : MonoBehaviour
 {
     public int currentLevelId;
     public UIPageSwitch pageSwitch;
+    [Tooltip("解锁下一关时获得的石砖 ID，可填写多个。")]
+    [SerializeField] private string[] rewardBrickIds;
 
     private void Start()
     {
@@ -21,6 +23,11 @@ public class LevelUnlock : MonoBehaviour
         if (DataSystem.instance != null)
         {
             DataSystem.instance.UnlockLevel(nextLevelId);
+            if (rewardBrickIds != null)
+            {
+                foreach (string brickId in rewardBrickIds)
+                    DataSystem.instance.UnlockBrick(brickId);
+            }
         }
 
         int nextPanelIndex = nextLevelId - 1;

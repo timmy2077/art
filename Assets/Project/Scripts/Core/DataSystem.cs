@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class DataSystem : MonoBehaviour
@@ -5,20 +6,36 @@ public class DataSystem : MonoBehaviour
     public static DataSystem instance;
 
     [Header("数据持久化设置")]
-    public bool enablePersistence = false;
+    public bool enablePersistence = true;
 
     private const string KEY_PLAYER_NAME = "PlayerName";
     private const string KEY_LEVEL_UNLOCK_PREFIX = "LevelUnlocked_";
+    private const string KEY_BRICK_UNLOCK_PREFIX = "BrickUnlocked_";
+    private const string KEY_BRICK_MIGRATION = "BrickUnlockMigrationV1";
     private const string KEY_SETTINGS_VOLUME = "SettingsVolume";
     private const string KEY_SETTINGS_MUSIC = "SettingsMusic";
     private const string KEY_SETTINGS_SFX = "SettingsSFX";
+    private const string DEFAULT_BRICK_ID = "gengzhong";
+
+    private static readonly string[] LegacyBrickIds =
+    {
+        "gengzhong", "paochu", "yishi", "sishen", "muzhu"
+    };
 
     private string cachedPlayerName = "Player";
+    private bool hasSavedPlayerName;
     private bool[] cachedLevelUnlocked = new bool[10];
+    private readonly HashSet<string> unlockedBricks = new HashSet<string>();
     private float cachedVolume = 1f;
     private bool cachedMusic = true;
     private bool cachedSFX = true;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    private static void EnsureInstance()
+    {
+        if (instance == null)
+            new GameObject("DataSystem").AddComponent<DataSystem>();
+    }
 
     private void Awake()
     {
@@ -39,6 +56,7 @@ public class DataSystem : MonoBehaviour
         if (enablePersistence)
         {
             cachedPlayerName = PlayerPrefs.GetString(KEY_PLAYER_NAME, "Player");
+            hasSavedPlayerName = PlayerPrefs.HasKey(KEY_PLAYER_NAME);
             cachedVolume = PlayerPrefs.GetFloat(KEY_SETTINGS_VOLUME, 1f);
             cachedMusic = PlayerPrefs.GetInt(KEY_SETTINGS_MUSIC, 1) == 1;
             cachedSFX = PlayerPrefs.GetInt(KEY_SETTINGS_SFX, 1) == 1;
@@ -47,6 +65,8 @@ public class DataSystem : MonoBehaviour
             {
                 cachedLevelUnlocked[i] = PlayerPrefs.GetInt(KEY_LEVEL_UNLOCK_PREFIX + (i + 1), i == 0 ? 1 : 0) == 1;
             }
+
+            MigrateLegacyBrickRecords();
         }
         else
         {
@@ -54,14 +74,41 @@ public class DataSystem : MonoBehaviour
         }
     }
 
+    private void MigrateLegacyBrickRecords()
+    {
+        if (PlayerPrefs.GetInt(KEY_BRICK_MIGRATION, 0) == 1) return;
+
+        bool hasLegacyProgress = false;
+        for (int i = 0; i < LegacyBrickIds.Length; i++)
+            hasLegacyProgress |= PlayerPrefs.HasKey(KEY_LEVEL_UNLOCK_PREFIX + (i + 1));
+
+        if (hasLegacyProgress)
+        {
+            for (int i = 0; i < LegacyBrickIds.Length; i++)
+            {
+                if (cachedLevelUnlocked[i])
+                    PlayerPrefs.SetInt(KEY_BRICK_UNLOCK_PREFIX + LegacyBrickIds[i], 1);
+            }
+        }
+
+        PlayerPrefs.SetInt(KEY_BRICK_MIGRATION, 1);
+        PlayerPrefs.Save();
+    }
+
     public string GetPlayerName()
     {
         return cachedPlayerName;
     }
 
+    public bool HasSavedPlayerName()
+    {
+        return hasSavedPlayerName;
+    }
+
     public void SavePlayerName(string name)
     {
         cachedPlayerName = name;
+        hasSavedPlayerName = true;
         if (enablePersistence)
         {
             PlayerPrefs.SetString(KEY_PLAYER_NAME, name);
@@ -93,6 +140,35 @@ public class DataSystem : MonoBehaviour
         if (enablePersistence)
         {
             PlayerPrefs.SetInt(KEY_LEVEL_UNLOCK_PREFIX + levelId, 1);
+            PlayerPrefs.Save();
+        }
+    }
+
+    public bool IsBrickUnlocked(string brickId)
+    {
+        if (string.IsNullOrEmpty(brickId)) return false;
+        return IsDefaultBrick(brickId) || unlockedBricks.Contains(brickId) ||
+               (enablePersistence && PlayerPrefs.GetInt(KEY_BRICK_UNLOCK_PREFIX + brickId, 0) == 1);
+    }
+
+    public static bool IsDefaultBrick(string brickId)
+    {
+        return brickId == DEFAULT_BRICK_ID;
+    }
+
+    public void UnlockBrick(string brickId)
+    {
+        if (string.IsNullOrEmpty(brickId))
+        {
+            Debug.LogWarning("[DataSystem] 石砖 ID 不能为空。", this);
+            return;
+        }
+
+        if (IsBrickUnlocked(brickId)) return;
+        unlockedBricks.Add(brickId);
+        if (enablePersistence)
+        {
+            PlayerPrefs.SetInt(KEY_BRICK_UNLOCK_PREFIX + brickId, 1);
             PlayerPrefs.Save();
         }
     }
@@ -147,7 +223,9 @@ public class DataSystem : MonoBehaviour
 
     public void ClearAllData()
     {
+        unlockedBricks.Clear();
         cachedPlayerName = "Player";
+        hasSavedPlayerName = false;
         cachedVolume = 1f;
         cachedMusic = true;
         cachedSFX = true;
