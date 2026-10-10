@@ -15,6 +15,8 @@ public class DataSystem : MonoBehaviour
     private const string KEY_SETTINGS_VOLUME = "SettingsVolume";
     private const string KEY_SETTINGS_MUSIC = "SettingsMusic";
     private const string KEY_SETTINGS_SFX = "SettingsSFX";
+    private const string KEY_MUSIC_VOLUME = "SettingsMusicVolume";
+    private const string KEY_SOUND_VOLUME = "SettingsSoundVolume";
     private const string DEFAULT_BRICK_ID = "gengzhong";
 
     private static readonly string[] LegacyBrickIds =
@@ -27,6 +29,8 @@ public class DataSystem : MonoBehaviour
     private bool[] cachedLevelUnlocked = new bool[10];
     private readonly HashSet<string> unlockedBricks = new HashSet<string>();
     private float cachedVolume = 1f;
+    private float cachedMusicVolume = 0.72f;
+    private float cachedSoundVolume = 0.82f;
     private bool cachedMusic = true;
     private bool cachedSFX = true;
 
@@ -58,6 +62,19 @@ public class DataSystem : MonoBehaviour
             cachedPlayerName = PlayerPrefs.GetString(KEY_PLAYER_NAME, "Player");
             hasSavedPlayerName = PlayerPrefs.HasKey(KEY_PLAYER_NAME);
             cachedVolume = PlayerPrefs.GetFloat(KEY_SETTINGS_VOLUME, 1f);
+            cachedMusicVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(KEY_MUSIC_VOLUME, 0.72f));
+            cachedSoundVolume = Mathf.Clamp01(PlayerPrefs.GetFloat(KEY_SOUND_VOLUME, 0.82f));
+            // 旧版只有总音量：迁移到两个滑条，避免留下用户无法调高的隐藏总音量。
+            if (!PlayerPrefs.HasKey(KEY_MUSIC_VOLUME) && !PlayerPrefs.HasKey(KEY_SOUND_VOLUME) &&
+                PlayerPrefs.HasKey(KEY_SETTINGS_VOLUME))
+            {
+                cachedMusicVolume = cachedSoundVolume = Mathf.Clamp01(cachedVolume);
+                cachedVolume = 1f;
+                PlayerPrefs.SetFloat(KEY_MUSIC_VOLUME, cachedMusicVolume);
+                PlayerPrefs.SetFloat(KEY_SOUND_VOLUME, cachedSoundVolume);
+                PlayerPrefs.SetFloat(KEY_SETTINGS_VOLUME, 1f);
+                PlayerPrefs.Save();
+            }
             cachedMusic = PlayerPrefs.GetInt(KEY_SETTINGS_MUSIC, 1) == 1;
             cachedSFX = PlayerPrefs.GetInt(KEY_SETTINGS_SFX, 1) == 1;
 
@@ -189,6 +206,31 @@ public class DataSystem : MonoBehaviour
         }
     }
 
+    public float GetSettingsMusicVolume() { return cachedMusicVolume; }
+    public float GetSettingsSoundVolume() { return cachedSoundVolume; }
+
+    public void SaveSettingsMusicVolume(float volume)
+    {
+        cachedMusicVolume = Mathf.Clamp01(volume);
+        cachedMusic = cachedMusicVolume > 0f;
+        if (GameAudio.Instance != null) GameAudio.Instance.RefreshSettings();
+        if (!enablePersistence) return;
+        PlayerPrefs.SetFloat(KEY_MUSIC_VOLUME, cachedMusicVolume);
+        PlayerPrefs.SetInt(KEY_SETTINGS_MUSIC, cachedMusic ? 1 : 0);
+        PlayerPrefs.Save();
+    }
+
+    public void SaveSettingsSoundVolume(float volume)
+    {
+        cachedSoundVolume = Mathf.Clamp01(volume);
+        cachedSFX = cachedSoundVolume > 0f;
+        if (GameAudio.Instance != null) GameAudio.Instance.RefreshSettings();
+        if (!enablePersistence) return;
+        PlayerPrefs.SetFloat(KEY_SOUND_VOLUME, cachedSoundVolume);
+        PlayerPrefs.SetInt(KEY_SETTINGS_SFX, cachedSFX ? 1 : 0);
+        PlayerPrefs.Save();
+    }
+
     public bool GetSettingsMusic()
     {
         return cachedMusic;
@@ -227,6 +269,8 @@ public class DataSystem : MonoBehaviour
         cachedPlayerName = "Player";
         hasSavedPlayerName = false;
         cachedVolume = 1f;
+        cachedMusicVolume = 0.72f;
+        cachedSoundVolume = 0.82f;
         cachedMusic = true;
         cachedSFX = true;
         for (int i = 0; i < cachedLevelUnlocked.Length; i++)

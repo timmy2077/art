@@ -12,10 +12,13 @@ public class GameAudio : MonoBehaviour
     private AudioLibrary library;
     private AudioSource musicSource;
     private AudioSource[] soundSources;
+    private float[] soundClipVolumes;
     private Coroutine musicFade;
     private string currentMusicId;
     private float currentMusicVolume = 1f;
     private float masterVolume = 1f;
+    private float musicVolume = 1f;
+    private float soundVolume = 1f;
     private bool musicEnabled = true;
     private bool soundEffectsEnabled = true;
 
@@ -42,6 +45,7 @@ public class GameAudio : MonoBehaviour
         musicSource.playOnAwake = false;
         musicSource.loop = true;
         soundSources = new AudioSource[SoundEffectVoices];
+        soundClipVolumes = new float[SoundEffectVoices];
         for (int i = 0; i < soundSources.Length; i++)
         {
             soundSources[i] = gameObject.AddComponent<AudioSource>();
@@ -71,12 +75,17 @@ public class GameAudio : MonoBehaviour
     {
         DataSystem data = DataSystem.instance;
         masterVolume = data != null ? data.GetSettingsVolume() : 1f;
+        musicVolume = data != null ? data.GetSettingsMusicVolume() : 1f;
+        soundVolume = data != null ? data.GetSettingsSoundVolume() : 1f;
         musicEnabled = data == null || data.GetSettingsMusic();
         soundEffectsEnabled = data == null || data.GetSettingsSFX();
         musicSource.mute = !musicEnabled;
-        musicSource.volume = masterVolume * currentMusicVolume;
-        foreach (AudioSource source in soundSources)
-            source.mute = !soundEffectsEnabled;
+        musicSource.volume = masterVolume * musicVolume * currentMusicVolume;
+        for (int i = 0; i < soundSources.Length; i++)
+        {
+            soundSources[i].mute = !soundEffectsEnabled;
+            soundSources[i].volume = masterVolume * soundVolume * soundClipVolumes[i];
+        }
     }
 
     public void PlayMusic(string id)
@@ -118,10 +127,12 @@ public class GameAudio : MonoBehaviour
             return;
         }
 
-        foreach (AudioSource source in soundSources)
+        for (int i = 0; i < soundSources.Length; i++)
         {
+            AudioSource source = soundSources[i];
             if (source.isPlaying) continue;
-            source.volume = masterVolume * entry.volume;
+            soundClipVolumes[i] = entry.volume;
+            source.volume = masterVolume * soundVolume * entry.volume;
             source.clip = entry.clip;
             source.Play();
             LogPlayed("SFX", id, entry.clip, source);
@@ -145,10 +156,10 @@ public class GameAudio : MonoBehaviour
         LogPlayed("Music", id, nextClip, musicSource);
         for (float elapsed = 0f; elapsed < MusicFadeSeconds; elapsed += Time.unscaledDeltaTime)
         {
-            musicSource.volume = Mathf.Lerp(0f, masterVolume * currentMusicVolume, elapsed / MusicFadeSeconds);
+            musicSource.volume = Mathf.Lerp(0f, masterVolume * musicVolume * currentMusicVolume, elapsed / MusicFadeSeconds);
             yield return null;
         }
-        musicSource.volume = masterVolume * currentMusicVolume;
+        musicSource.volume = masterVolume * musicVolume * currentMusicVolume;
         musicFade = null;
     }
 
